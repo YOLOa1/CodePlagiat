@@ -1,0 +1,237 @@
+# ============================================
+# Docker Compose - Cluster Spark Distribué
+# ============================================
+# Orchestration du système de détection de plagiat :
+# - 1 Spark Master (avec HDFS NameNode)
+# - 2 Spark Workers (avec HDFS DataNode)
+# - 1 Client Streamlit (interface web)
+# ============================================
+
+version: '3.8'
+
+# ============================================
+# SERVICES
+# ============================================
+services:
+  
+  # ==========================================
+  # SPARK MASTER + HDFS NAMENODE
+  # ==========================================
+  spark-master:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.base
+    container_name: spark-master
+    hostname: spark-master
+    
+    # Variables d'environnement
+    environment:
+      - SPARK_ROLE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - SPARK_MASTER_LOG=/app/data/logs/spark-master.log
+    
+    # Ports exposés
+    ports:
+      - "8080:8080"   # Spark Master WebUI
+      - "7077:7077"   # Spark Master (communication)
+      - "9000:9000"   # HDFS NameNode (communication)
+      - "9870:9870"   # HDFS NameNode WebUI
+    
+    # Volumes partagés
+    volumes:
+      - ./src:/app/src                      # Code source
+      - ./data:/app/data                    # Données et logs
+      - ./configs:/app/configs              # Configurations
+      - spark-master-data:/hdfs/namenode    # Persistance HDFS NameNode
+      - spark-logs:/tmp/spark-events        # Logs Spark
+    
+    # Réseau
+    networks:
+      - spark-network
+    
+    # Santé du conteneur
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 8080 || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+  
+  # ==========================================
+  # SPARK WORKER 1 + HDFS DATANODE
+  # ==========================================
+  spark-worker-1:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.base
+    container_name: spark-worker-1
+    hostname: spark-worker-1
+    
+    # Dépendances
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    
+    # Variables d'environnement
+    environment:
+      - SPARK_ROLE=worker
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_PORT=7078
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_WORKER_DIR=/tmp/spark-worker-1
+    
+    # Ports exposés
+    ports:
+      - "8081:8081"   # Spark Worker 1 WebUI
+      - "9864:9864"   # HDFS DataNode 1
+    
+    # Volumes partagés
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./configs:/app/configs
+      - spark-worker-1-data:/hdfs/datanode
+      - spark-logs:/tmp/spark-events
+    
+    # Réseau
+    networks:
+      - spark-network
+    
+    # Santé du conteneur
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 8081 || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+  
+  # ==========================================
+  # SPARK WORKER 2 + HDFS DATANODE
+  # ==========================================
+  spark-worker-2:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.base
+    container_name: spark-worker-2
+    hostname: spark-worker-2
+    
+    # Dépendances
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    
+    # Variables d'environnement
+    environment:
+      - SPARK_ROLE=worker
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_PORT=7079
+      - SPARK_WORKER_WEBUI_PORT=8082
+      - SPARK_WORKER_DIR=/tmp/spark-worker-2
+    
+    # Ports exposés
+    ports:
+      - "8082:8082"   # Spark Worker 2 WebUI
+      - "9865:9864"   # HDFS DataNode 2 (mappé sur port différent)
+    
+    # Volumes partagés
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./configs:/app/configs
+      - spark-worker-2-data:/hdfs/datanode
+      - spark-logs:/tmp/spark-events
+    
+    # Réseau
+    networks:
+      - spark-network
+    
+    # Santé du conteneur
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 8082 || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+  
+  # ==========================================
+  # CLIENT STREAMLIT (Interface Web)
+  # ==========================================
+  app-client:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.client
+    container_name: app-client
+    hostname: app-client
+    
+    # Dépendances
+    depends_on:
+      spark-master:
+        condition: service_healthy
+      spark-worker-1:
+        condition: service_healthy
+      spark-worker-2:
+        condition: service_healthy
+    
+    # Variables d'environnement
+    environment:
+      - SPARK_ROLE=client
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - HDFS_URL=hdfs://spark-master:9000
+    
+    # Ports exposés
+    ports:
+      - "8501:8501"   # Streamlit WebUI
+    
+    # Volumes partagés
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./configs:/app/configs
+    
+    # Réseau
+    networks:
+      - spark-network
+    
+    # Commande de démarrage
+    command: streamlit run /app/src/client/app.py --server.port=8501 --server.address=0.0.0.0
+    
+    # Santé du conteneur
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+# ============================================
+# VOLUMES PERSISTANTS
+# ============================================
+# Permet de conserver les données même après suppression des conteneurs
+volumes:
+  spark-master-data:
+    driver: local
+  spark-worker-1-data:
+    driver: local
+  spark-worker-2-data:
+    driver: local
+  spark-logs:
+    driver: local
+
+# ============================================
+# RÉSEAU
+# ============================================
+# Réseau privé pour la communication inter-conteneurs
+networks:
+  spark-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

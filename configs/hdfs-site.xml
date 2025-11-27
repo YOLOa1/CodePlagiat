@@ -1,0 +1,133 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+============================================
+Configuration HDFS
+============================================
+Configuration du système de fichiers distribué Hadoop (HDFS).
+Adapté pour un environnement Docker avec un seul NameNode
+et plusieurs DataNodes.
+============================================
+-->
+<configuration>
+    <!-- ========================================== -->
+    <!-- CONFIGURATION DU NAMENODE -->
+    <!-- ========================================== -->
+    
+    <!-- Réplication des blocs -->
+    <!-- Nombre de copies de chaque bloc de données -->
+    <!-- Pour un cluster de 2 workers, on garde 1 réplique -->
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+        <description>Nombre de répliques par bloc</description>
+    </property>
+    
+    <!-- Répertoire de stockage du NameNode -->
+    <!-- Contient les métadonnées du système de fichiers -->
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:///hdfs/namenode</value>
+        <description>Répertoire de stockage des métadonnées du NameNode</description>
+    </property>
+    
+    <!-- ========================================== -->
+    <!-- CONFIGURATION DU DATANODE -->
+    <!-- ========================================== -->
+    
+    <!-- Répertoire de stockage des DataNodes -->
+    <!-- Contient les blocs de données effectifs -->
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:///hdfs/datanode</value>
+        <description>Répertoire de stockage des données du DataNode</description>
+    </property>
+    
+    <!-- ========================================== -->
+    <!-- CONFIGURATION RÉSEAU -->
+    <!-- ========================================== -->
+    
+    <!-- Adresse du NameNode -->
+    <property>
+        <name>dfs.namenode.rpc-address</name>
+        <value>spark-master:9000</value>
+        <description>Adresse RPC du NameNode</description>
+    </property>
+    
+    <!-- Port HTTP du NameNode WebUI -->
+    <property>
+        <name>dfs.namenode.http-address</name>
+        <value>0.0.0.0:9870</value>
+        <description>Adresse HTTP pour l'interface Web du NameNode</description>
+    </property>
+    
+    <!-- Port HTTP du DataNode WebUI -->
+    <property>
+        <name>dfs.datanode.http.address</name>
+        <value>0.0.0.0:9864</value>
+        <description>Adresse HTTP pour l'interface Web du DataNode</description>
+    </property>
+    
+    <!-- ========================================== -->
+    <!-- PERMISSIONS ET SÉCURITÉ -->
+    <!-- ========================================== -->
+    
+    <!-- Désactiver les permissions pour simplifier (dev) -->
+    <!-- En production, laisser à true -->
+    <property>
+        <name>dfs.permissions.enabled</name>
+        <value>false</value>
+        <description>Activer/désactiver les permissions HDFS</description>
+    </property>
+    
+    <!-- Désactiver la vérification des permissions (dev) -->
+    <property>
+        <name>dfs.permissions.superusergroup</name>
+        <value>root</value>
+        <description>Groupe superutilisateur</description>
+    </property>
+    
+    <!-- ========================================== -->
+    <!-- PERFORMANCE ET TAILLE DE BLOCS -->
+    <!-- ========================================== -->
+    
+    <!-- Taille des blocs HDFS (128 MB) -->
+    <property>
+        <name>dfs.blocksize</name>
+        <value>134217728</value>
+        <description>Taille d'un bloc HDFS en octets (128 MB)</description>
+    </property>
+    
+    <!-- Taille du buffer pour les opérations I/O -->
+    <property>
+        <name>io.file.buffer.size</name>
+        <value>131072</value>
+        <description>Taille du buffer I/O (128 KB)</description>
+    </property>
+    
+    <!-- ========================================== -->
+    <!-- CONFIGURATION AVANCÉE -->
+    <!-- ========================================== -->
+    
+    <!-- Activer les web HDFS (REST API) -->
+    <property>
+        <name>dfs.webhdfs.enabled</name>
+        <value>true</value>
+        <description>Activer l'API REST WebHDFS</description>
+    </property>
+    
+    <!-- Heartbeat interval du DataNode (secondes) -->
+    <property>
+        <name>dfs.heartbeat.interval</name>
+        <value>3</value>
+        <description>Intervalle de heartbeat du DataNode vers NameNode</description>
+    </property>
+    
+    <!-- Timeout de connexion au NameNode -->
+    <property>
+        <name>dfs.client.socket-timeout</name>
+        <value>60000</value>
+        <description>Timeout socket client (60 secondes)</description>
+    </property>
+    
+</configuration>

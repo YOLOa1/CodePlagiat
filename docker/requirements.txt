@@ -1,0 +1,21 @@
+pyspark==3.3.0
+py4j==0.10.9.5
+
+# Analyse de code et AST
+tree-sitter==0.20.1
+astroid==2.12.13
+ast-comments==1.1.2
+
+# Manipulation de données
+numpy==1.24.3
+pandas==2.0.3
+
+# Utilitaires
+tqdm==4.66.1
+python-dateutil==2.8.2
+
+# HDFS client Python
+hdfs==2.7.0
+
+# Hashing et cryptographie
+xxhash==3.4.1
