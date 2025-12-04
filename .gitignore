@@ -16,6 +16,7 @@ eggs/
 lib/
 lib64/
 parts/
+CONVERSATION_CONTEXT.md
 sdist/
 var/
 wheels/
